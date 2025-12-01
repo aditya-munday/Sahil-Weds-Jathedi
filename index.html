@@ -678,4 +678,426 @@ class Pipe {
         
         // Simple AABB collision detection
         if (chudRight > this.x && chudLeft < pipeRight) {
-            if (chudTop < this.gapPosition || chudBottom > this.gapPosit
+            if (chudTop < this.gapPosition || chudBottom > this.gapPosition + (PIPE_GAP * scaleFactor)) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+}
+
+// Object pool for pipes
+const pipePool = {
+    active: [],
+    inactive: [],
+    
+    getPipe() {
+        if (this.inactive.length > 0) {
+            const pipe = this.inactive.pop();
+            pipe.reset();
+            pipe.active = true;
+            this.active.push(pipe);
+            return pipe;
+        }
+        
+        const pipe = new Pipe();
+        this.active.push(pipe);
+        return pipe;
+    },
+    
+    returnPipe(pipe) {
+        const index = this.active.indexOf(pipe);
+        if (index > -1) {
+            this.active.splice(index, 1);
+        }
+        pipe.active = false;
+        this.inactive.push(pipe);
+    },
+    
+    cleanup() {
+        // Keep only recent pipes in pool to prevent memory growth
+        if (this.inactive.length > 10) {
+            this.inactive = this.inactive.slice(-10);
+        }
+    }
+};
+
+// Game objects
+const chud = new Chud();
+
+// Optimized game functions
+function startGame() {
+    if (!assets.loaded) {
+        console.warn('Assets not loaded yet');
+        return;
+    }
+    
+    // Reset game state
+    gameState.isRunning = true;
+    gameState.isGameOver = false;
+    gameState.isWin = false;
+    gameState.score = 0;
+    gameState.lastPipeSpawn = 0;
+    gameState.frames = 0;
+    gameState.lastFrameTime = performance.now();
+    
+    // Reset objects
+    chud.reset();
+    
+    // Clear pipe pool
+    pipePool.active.forEach(pipe => pipePool.returnPipe(pipe));
+    pipePool.active = [];
+    
+    // Update UI
+    document.getElementById('start-screen').classList.add('hidden');
+    document.getElementById('game-over-screen').classList.add('hidden');
+    document.getElementById('win-screen').classList.add('hidden');
+    document.getElementById('winner-video').classList.add('hidden');
+    document.getElementById('loading-screen').classList.add('hidden');
+    updateScore();
+    updateInstagramIconVisibility();
+    
+    // Initialize audio on first game start
+    if (!audioInitialized) {
+        initializeAudio();
+    }
+    
+    // Start background music
+    if (backgroundMusic && !backgroundMusic.src) {
+        backgroundMusic.src = 'music.mp3';
+        backgroundMusic.load();
+    }
+    backgroundMusic.currentTime = 0;
+    backgroundMusic.play().catch(e => console.debug('Background music play failed:', e));
+    
+    // Start optimized game loop
+    if (!gameState.animationId) {
+        gameState.animationId = requestAnimationFrame(gameLoop);
+    }
+}
+
+function gameOver() {
+    if (gameState.isGameOver) return; // Prevent multiple triggers
+    
+    gameState.isGameOver = true;
+    gameState.isRunning = false;
+    
+    // Stop background music
+    if (backgroundMusic) {
+        backgroundMusic.pause();
+    }
+    
+    // Show collision effects
+    showElement2();
+    playCollisionSound();
+    
+    // Show game over screen after delay
+    setTimeout(() => {
+        document.getElementById('final-score').textContent = gameState.score;
+        document.getElementById('game-over-screen').classList.remove('hidden');
+        updateInstagramIconVisibility();
+    }, 2000); // Reduced from 4s to 2s for better UX
+}
+
+function playCollisionSound() {
+    if (!elementSound.src) {
+        elementSound.src = 'element.mp3';
+        elementSound.load();
+    }
+    elementSound.currentTime = 0;
+    elementSound.play().catch(e => console.debug('Collision sound play failed:', e));
+}
+
+function winGame() {
+    gameState.isWin = true;
+    gameState.isRunning = false;
+    
+    // Stop background music
+    if (backgroundMusic) {
+        backgroundMusic.pause();
+    }
+    
+    // Show winner video
+    const winnerVideo = document.getElementById('winner-video');
+    winnerVideo.classList.remove('hidden');
+    
+    // Preload video source
+    if (winnerVideo.children.length === 0) {
+        const source = document.createElement('source');
+        source.src = 'winner.mp4';
+        source.type = 'video/mp4';
+        winnerVideo.appendChild(source);
+    }
+    
+    winnerVideo.play().catch(e => console.debug('Winner video play failed:', e));
+    
+    winnerVideo.onended = function() {
+        document.getElementById('win-screen').classList.remove('hidden');
+        winnerVideo.classList.add('hidden');
+        updateInstagramIconVisibility();
+    };
+}
+
+function showElement2() {
+    const element2Img = assets.images['element2-img'];
+    if (!element2Img) return;
+    
+    const element2Overlay = document.createElement('img');
+    element2Overlay.id = 'element2-overlay';
+    element2Overlay.src = element2Img.src;
+    
+    document.getElementById('game-container').appendChild(element2Overlay);
+    
+    // Auto-remove after display
+    setTimeout(() => {
+        if (element2Overlay.parentNode) {
+            element2Overlay.parentNode.removeChild(element2Overlay);
+        }
+    }, 2000);
+}
+
+function updateScore() {
+    const scoreDisplay = document.getElementById('score-display');
+    if (scoreDisplay) {
+        scoreDisplay.textContent = gameState.score;
+        
+        // Add score animation for better UX
+        scoreDisplay.style.transform = 'scale(1.1)';
+        setTimeout(() => {
+            scoreDisplay.style.transform = 'scale(1)';
+        }, 150);
+    }
+}
+
+function spawnPipe() {
+    pipePool.getPipe();
+}
+
+function checkCollisions() {
+    // Early exit if game over
+    if (gameState.isGameOver || !gameState.isRunning) return;
+    
+    // Check collisions with active pipes
+    for (let i = 0; i < pipePool.active.length; i++) {
+        const pipe = pipePool.active[i];
+        if (pipe.collidesWith(chud)) {
+            gameOver();
+            return;
+        }
+    }
+}
+</script>
+<script>
+// Optimized game loop with frame rate control
+function gameLoop(currentTime) {
+    // Calculate delta time for frame rate independence
+    const deltaTime = currentTime - (gameState.lastFrameTime || currentTime);
+    gameState.lastFrameTime = currentTime;
+    
+    // Calculate FPS (for debugging)
+    gameState.fps = Math.round(1000 / deltaTime);
+    
+    // Clear canvas efficiently
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw background
+    const bgImg = assets.images['background-img'];
+    if (bgImg && bgImg.complete) {
+        ctx.drawImage(bgImg, 0, 0, canvas.width, canvas.height);
+    } else {
+        ctx.fillStyle = '#70c5ce';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+    
+    // Update and draw pipes
+    let activePipeCount = 0;
+    for (let i = pipePool.active.length - 1; i >= 0; i--) {
+        const pipe = pipePool.active[i];
+        pipe.update(deltaTime);
+        pipe.draw();
+        
+        // Remove inactive pipes
+        if (!pipe.active) {
+            pipePool.returnPipe(pipe);
+        } else {
+            activePipeCount++;
+        }
+    }
+    
+    // Spawn new pipes with frame rate independent timing
+    if (gameState.isRunning && !gameState.isGameOver && !gameState.isWin) {
+        const now = currentTime;
+        if (now - gameState.lastPipeSpawn > PIPE_SPAWN_INTERVAL) {
+            spawnPipe();
+            gameState.lastPipeSpawn = now;
+        }
+    }
+    
+    // Update and draw chud
+    chud.update(deltaTime);
+    chud.draw();
+    
+    // Draw ground
+    const scaledGroundHeight = GROUND_HEIGHT * scaleFactor;
+    ctx.fillStyle = '#ded895';
+    ctx.fillRect(0, canvas.height - scaledGroundHeight, canvas.width, scaledGroundHeight);
+    
+    // Draw grass
+    ctx.fillStyle = '#73bf2e';
+    ctx.fillRect(0, canvas.height - scaledGroundHeight, canvas.width, 20 * scaleFactor);
+    
+    // Check collisions
+    if (gameState.isRunning && !gameState.isGameOver && !gameState.isWin) {
+        checkCollisions();
+    }
+    
+    // Clean up object pool periodically
+    if (gameState.frames % 60 === 0) { // Every ~second at 60fps
+        pipePool.cleanup();
+    }
+    
+    gameState.frames++;
+    
+    // Continue game loop with error handling
+    if (gameState.isRunning || !gameState.isGameOver || !gameState.isWin) {
+        try {
+            gameState.animationId = requestAnimationFrame(gameLoop);
+        } catch (error) {
+            console.error('Game loop error:', error);
+            // Attempt to restart game loop
+            setTimeout(() => {
+                gameState.animationId = requestAnimationFrame(gameLoop);
+            }, 100);
+        }
+    }
+}
+
+// Optimized input handling
+function handleInput(event) {
+    event.preventDefault();
+    chud.flap();
+}
+
+// Event listeners with proper cleanup
+function initializeEventListeners() {
+    const startButton = document.getElementById('start-button');
+    const restartButton = document.getElementById('restart-button');
+    const winRestartButton = document.getElementById('win-restart-button');
+    const instagramIcon = document.getElementById('instagram-icon');
+    
+    // Remove existing listeners to prevent duplicates
+    startButton.replaceWith(startButton.cloneNode(true));
+    restartButton.replaceWith(restartButton.cloneNode(true));
+    winRestartButton.replaceWith(winRestartButton.cloneNode(true));
+    instagramIcon.replaceWith(instagramIcon.cloneNode(true));
+    
+    // Add event listeners
+    document.getElementById('start-button').addEventListener('click', startGame);
+    document.getElementById('restart-button').addEventListener('click', startGame);
+    document.getElementById('win-restart-button').addEventListener('click', startGame);
+    document.getElementById('instagram-icon').addEventListener('click', handleInstagramClick);
+    
+    // Input handlers
+    document.addEventListener('keydown', (e) => {
+        if (e.code === 'Space') {
+            e.preventDefault();
+            if (!gameState.isRunning && !gameState.isWin) {
+                startGame();
+            } else {
+                handleInput(e);
+            }
+        }
+    });
+    
+    // Touch/mouse input with passive listeners for performance
+    canvas.addEventListener('mousedown', handleInput, { passive: false });
+    canvas.addEventListener('touchstart', handleInput, { passive: false });
+    
+    // Prevent default behaviors
+    canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+    
+    // Handle visibility changes for performance
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden && backgroundMusic) {
+            backgroundMusic.pause();
+        }
+    });
+}
+
+// Handle window resize with debouncing
+let resizeTimeout;
+function handleResize() {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+        initializeCanvas();
+        // Redraw current state if game is running
+        if (gameState.isRunning || !gameState.isGameOver || !gameState.isWin) {
+            requestAnimationFrame(gameLoop);
+        }
+    }, 250);
+}
+
+// Initialize the game
+async function initializeGame() {
+    try {
+        // Set up canvas first
+        initializeCanvas();
+        initializeEventListeners();
+        
+        // Load assets with progress indication
+        await loadAssets();
+        
+        // Hide loading screen and show start screen
+        document.getElementById('loading-screen').classList.add('hidden');
+        document.getElementById('start-screen').classList.remove('hidden');
+        updateInstagramIconVisibility();
+        
+        // Initialize audio (non-blocking)
+        setTimeout(initializeAudio, 1000);
+        
+        // Set up resize handler
+        window.addEventListener('resize', handleResize);
+        
+        console.log('Game initialized successfully');
+        
+    } catch (error) {
+        console.error('Game initialization failed:', error);
+        document.getElementById('loading-screen').querySelector('p').textContent = 
+            'Failed to load game. Please refresh the page.';
+    }
+}
+
+// Start game initialization when page loads
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeGame);
+} else {
+    initializeGame();
+}
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', () => {
+    // Stop game loop
+    if (gameState.animationId) {
+        cancelAnimationFrame(gameState.animationId);
+    }
+    
+    // Clean up audio
+    if (backgroundMusic) {
+        backgroundMusic.pause();
+        backgroundMusic.src = '';
+    }
+    
+    // Remove event listeners
+    window.removeEventListener('resize', handleResize);
+});
+
+// Export for debugging (remove in production)
+window.gameDebug = {
+    gameState,
+    assets,
+    scaleFactor,
+    isMobile,
+    isLowEndDevice
+};
+</script>
