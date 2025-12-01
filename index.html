@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sahil Weds Jathedi</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+    <style>
+        /* CSS will go here in Part 2 */
+    </style>
+</head>
+<body>
+    <!-- Preload assets with optimized loading -->
+    <img id="bird-img" src="bird.png" style="display: none;" crossorigin="anonymous">
+    <img id="pillars-img" src="pillars.png" style="display: none;" crossorigin="anonymous">
+    <img id="element2-img" src="element2.png" style="display: none;" crossorigin="anonymous">
+    <img id="instagram-img" src="instagram.png" style="display: none;" crossorigin="anonymous">
+    
+    <div id="game-container">
+        <canvas id="game-canvas">
+            Your browser does not support the canvas element.
+        </canvas>
+        <div id="ui-overlay">
+            <div id="start-screen" class="screen">
+                <h1>Sahel Weds Jathedi</h1>
+                <p>Tap or press SPACE to Fuck</p>
+                <button id="start-button">Start Game</button>
+            </div>
+            <div id="game-over-screen" class="screen hidden">
+                <h2>Chod Diya Sahil</h2>
+                <p>Muth Count: <span id="final-score">0</span></p>
+                <button id="restart-button">Refuck</button>
+            </div>
+            <div id="win-screen" class="screen hidden">
+                <h2>You Win!</h2>
+                <p>Congratulations! You passed 20 pillars!</p>
+                <button id="win-restart-button">Play Again</button>
+            </div>
+            <div id="score-display">0</div>
+            
+            <!-- Instagram Icon -->
+            <div id="instagram-icon" class="hidden">
+                <img src="instagram.png" alt="Instagram" id="instagram-image">
+            </div>
+        </div>
+        
+        <!-- Video element for winner -->
+        <video id="winner-video" class="hidden" preload="metadata" playsinline>
+            <source src="winner.mp4" type="video/mp4">
+            Your browser does not support the video tag.
+        </video>
+
+        <!-- Loading indicator -->
+        <div id="loading-screen" class="screen">
+            <div class="loading-spinner"></div>
+            <p>Loading Game...</p>
+        </div>
+    </div>
+
+    <script>
+        // JavaScript will go here in Parts 3-5
+    </script>
+</body>
+</html>
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+body {
+    font-family: 'Fredoka One', cursive;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    overflow: hidden;
+    touch-action: manipulation;
+}
+
+#game-container {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    max-width: 500px;
+    max-height: 900px;
+    margin: 0 auto;
+    aspect-ratio: 9/16;
+}
+
+#game-canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background-color: #70c5ce;
+    border-radius: clamp(8px, 2vw, 12px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+    image-rendering: pixelated;
+}
+
+#ui-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    contain: layout style paint;
+}
+
+.screen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(5px);
+    color: white;
+    text-align: center;
+    padding: clamp(15px, 5vw, 25px);
+    border-radius: inherit;
+    z-index: 100;
+}
+
+.hidden {
+    display: none !important;
+    visibility: hidden;
+}
+
+.screen h1, .screen h2 {
+    font-size: clamp(2rem, 8vw, 3rem);
+    margin-bottom: clamp(8px, 2vw, 12px);
+    text-shadow: 2px 2px 0 #000;
+    color: #f8e71c;
+    line-height: 1.2;
+}
+
+.screen p {
+    font-size: clamp(1rem, 4vw, 1.3rem);
+    margin-bottom: clamp(15px, 5vw, 25px);
+    text-shadow: 1px 1px 0 #000;
+    line-height: 1.4;
+}
+
+button {
+    pointer-events: auto;
+    background: linear-gradient(145deg, #f8e71c, #e6b400);
+    color: #333;
+    border: none;
+    border-radius: clamp(25px, 8vw, 50px);
+    padding: clamp(10px, 3vw, 15px) clamp(20px, 6vw, 35px);
+    font-family: 'Fredoka One', cursive;
+    font-size: clamp(1rem, 4vw, 1.3rem);
+    cursor: pointer;
+    box-shadow: 0 4px 0 #b38700, 0 6px 10px rgba(0,0,0,0.2);
+    transition: all 0.1s ease;
+    min-height: 44px; /* Mobile touch target */
+    touch-action: manipulation;
+}
+
+button:hover, button:active {
+    transform: translateY(2px);
+    box-shadow: 0 2px 0 #b38700, 0 4px 6px rgba(0,0,0,0.2);
+}
+
+#score-display {
+    position: absolute;
+    top: clamp(15px, 4vw, 25px);
+    left: 0;
+    width: 100%;
+    text-align: center;
+    font-size: clamp(2.5rem, 10vw, 4rem);
+    color: white;
+    text-shadow: 3px 3px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
+    pointer-events: none;
+    z-index: 50;
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+
+#winner-video {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: inherit;
+    z-index: 200;
+}
+
+#element2-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 150;
+    pointer-events: none;
+    width: min(60vw, 300px);
+    height: auto;
+}
+
+/* Instagram Icon Styles */
+#instagram-icon {
+    position: absolute;
+    top: clamp(10px, 3vw, 15px);
+    right: clamp(10px, 3vw, 15px);
+    width: clamp(30px, 8vw, 45px);
+    height: clamp(30px, 8vw, 45px);
+    pointer-events: auto;
+    cursor: pointer;
+    z-index: 250;
+    transition: transform 0.2s ease;
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 50%;
+    padding: clamp(4px, 1vw, 6px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+#instagram-icon:hover {
+    transform: scale(1.1);
+    background: white;
+}
+
+#instagram-icon:active {
+    transform: scale(0.95);
+}
+
+#instagram-image {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    border-radius: 30%;
+}
+
+/* Loading Screen */
+#loading-screen {
+    background: rgba(0, 0, 0, 0.95);
+    z-index: 300;
+}
+
+.loading-spinner {
+    width: clamp(40px, 10vw, 60px);
+    height: clamp(40px, 10vw, 60px);
+    border: 4px solid #f8e71c;
+    border-top: 4px solid transparent;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 20px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Performance optimizations */
+@media (max-width: 768px) {
+    #game-container {
+        max-height: 100vh;
+        max-width: 100vw;
+    }
+}
+
+@media (max-height: 700px) {
+    .screen h1, .screen h2 {
+        font-size: clamp(1.5rem, 6vw, 2.5rem);
+    }
+    
+    .screen p {
+        font-size: clamp(0.9rem, 3.5vw, 1.1rem);
+        margin-bottom: clamp(10px, 3vw, 20px);
+    }
+    
+    button {
+        padding: clamp(8px, 2.5vw, 12px) clamp(15px, 5vw, 25px);
+        font-size: clamp(0.9rem, 3.5vw, 1.1rem);
+    }
+}
+
+/* Reduce motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+    
+    .loading-spinner {
+        animation: none;
+        border: 4px solid #f8e71c;
+    }
+}
+</style>
+<script>
+// Performance and device detection
+const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+const isLowEndDevice = (() => {
+    const hardwareConcurrency = navigator.hardwareConcurrency || 4;
+    const memory = navigator.deviceMemory || 4;
+    return hardwareConcurrency <= 4 || memory <= 4;
+})();
+
+// Adaptive game constants based on device capability
+const GRAVITY = 0.5;
+const FLAP_FORCE = -6.5;
+const PIPE_SPEED = isLowEndDevice ? 2.5 : 3; // Slower on low-end devices
+const PIPE_SPAWN_INTERVAL = isLowEndDevice ? 1800 : 1500; // Less frequent on low-end
+const PIPE_GAP = 150;
+const PIPE_WIDTH = 60;
+const GROUND_HEIGHT = 80;
+const CHUD_SIZE = 40;
+const WIN_SCORE = 5;
+
+// Game state with memory optimization
+const gameState = {
+    isRunning: false,
+    isGameOver: false,
+    isWin: false,
+    score: 0,
+    lastPipeSpawn: 0,
+    frames: 0,
+    lastFrameTime: 0,
+    fps: 0
+};
+
+// Audio objects with lazy loading
+let backgroundMusic, jumpSound, elementSound;
+let audioInitialized = false;
+
+function initializeAudio() {
+    if (audioInitialized) return;
+    
+    try {
+        backgroundMusic = new Audio();
+        jumpSound = new Audio();
+        elementSound = new Audio();
+        
+        // Configure audio properties
+        backgroundMusic.loop = true;
+        backgroundMusic.preload = 'none'; // Lazy load
+        jumpSound.preload = 'none';
+        elementSound.preload = 'none';
+        
+        // Set volume levels
+        backgroundMusic.volume = 0.7;
+        jumpSound.volume = 0.8;
+        elementSound.volume = 0.9;
+        
+        audioInitialized = true;
+    } catch (error) {
+        console.warn('Audio initialization failed:', error);
+    }
+}
+
+// Canvas setup with performance optimizations
+const canvas = document.getElementById('game-canvas');
+const ctx = canvas.getContext('2d', {
+    alpha: false, // Improve performance
+    desynchronized: true // Better for mobile
+});
+
+// Asset loading state
+const assets = {
+    loaded: false,
+    images: {},
+    progress: 0
+};
+
+// Instagram deep link URLs
+const INSTAGRAM_DEEP_LINK = 'instagram://user?username=srt_sahil_01';
+const INSTAGRAM_WEB_LINK = 'https://www.instagram.com/srt_sahil_01/';
+
+// Responsive scaling factors
+let scaleFactor = 1;
+let baseWidth = 360; // Base design width
+
+// Initialize responsive canvas
+function initializeCanvas() {
+    const container = document.getElementById('game-container');
+    const containerRect = container.getBoundingClientRect();
+    
+    // Set canvas dimensions based on container
+    canvas.width = Math.floor(containerRect.width);
+    canvas.height = Math.floor(containerRect.height);
+    
+    // Calculate scale factor for responsive design
+    scaleFactor = Math.min(canvas.width / baseWidth, canvas.height / (baseWidth * 1.5));
+    
+    // Optimize canvas rendering
+    ctx.imageSmoothingEnabled = false;
+}
+
+// Asset loading with progress tracking
+function loadAssets() {
+    return new Promise((resolve, reject) => {
+        const imagesToLoad = [
+            { id: 'bird-img', src: 'bird.png' },
+            { id: 'pillars-img', src: 'pillars.png' },
+            { id: 'element2-img', src: 'element2.png' },
+            { id: 'instagram-img', src: 'instagram.png' },
+            { id: 'background-img', src: 'background.jpg' }
+        ];
+        
+        let loadedCount = 0;
+        const totalImages = imagesToLoad.length;
+        
+        imagesToLoad.forEach(imgConfig => {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            
+            img.onload = () => {
+                loadedCount++;
+                assets.progress = loadedCount / totalImages;
+                assets.images[imgConfig.id] = img;
+                
+                // Update loading screen progress
+                updateLoadingProgress(assets.progress);
+                
+                if (loadedCount === totalImages) {
+                    assets.loaded = true;
+                    resolve(assets.images);
+                }
+            };
+            
+            img.onerror = (error) => {
+                console.warn(`Failed to load image: ${imgConfig.src}`, error);
+                loadedCount++;
+                assets.images[imgConfig.id] = null; // Mark as failed
+                
+                if (loadedCount === totalImages) {
+                    assets.loaded = true;
+                    resolve(assets.images); // Resolve even with failures
+                }
+            };
+            
+            img.src = imgConfig.src;
+        });
+    });
+}
+
+function updateLoadingProgress(progress) {
+    const loadingScreen = document.getElementById('loading-screen');
+    const loadingText = loadingScreen.querySelector('p');
+    
+    if (loadingText) {
+        loadingText.textContent = `Loading Game... ${Math.round(progress * 100)}%`;
+    }
+}
+
+// Instagram icon click handler with error handling
+function handleInstagramClick(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    
+    // Try to open Instagram app with deep link
+    const openApp = () => {
+        window.location.href = INSTAGRAM_DEEP_LINK;
+    };
+    
+    // Fallback to web version
+    const openWeb = () => {
+        window.open(INSTAGRAM_WEB_LINK, '_blank', 'noopener,noreferrer');
+    };
+    
+    let appOpened = false;
+    
+    // Try to open the app
+    try {
+        openApp();
+        appOpened = true;
+    } catch (error) {
+        console.warn('Deep link failed:', error);
+    }
+    
+    // Fallback to web after delay if app didn't open
+    setTimeout(() => {
+        if (!appOpened || !document.hidden) {
+            openWeb();
+        }
+    }, 500);
+}
+
+// Show/hide Instagram icon based on game state
+function updateInstagramIconVisibility() {
+    const instagramIcon = document.getElementById('instagram-icon');
+    const startScreen = document.getElementById('start-screen');
+    const gameOverScreen = document.getElementById('game-over-screen');
+    const winScreen = document.getElementById('win-screen');
+    
+    const shouldShow = !startScreen.classList.contains('hidden') || 
+                      !gameOverScreen.classList.contains('hidden') || 
+                      !winScreen.classList.contains('hidden');
+    
+    if (shouldShow) {
+        instagramIcon.classList.remove('hidden');
+    } else {
+        instagramIcon.classList.add('hidden');
+    }
+}
+
+// Optimized Chud class
+class Chud {
+    constructor() {
+        this.reset();
+    }
+    
+    reset() {
+        this.x = canvas.width * 0.25; // 25% from left
+        this.y = canvas.height * 0.5; // Center vertically
+        this.velocity = 0;
+        this.rotation = 0;
+        this.lastFlapTime = 0;
+    }
+    
+    flap() {
+        const now = Date.now();
+        // Prevent rapid consecutive flaps (100ms cooldown)
+        if (now - this.lastFlapTime < 100) return;
+        
+        if (gameState.isRunning && !gameState.isGameOver && !gameState.isWin) {
+            this.velocity = FLAP_FORCE;
+            this.lastFlapTime = now;
+            
+            // Lazy load and play jump sound
+            if (!jumpSound.src) {
+                jumpSound.src = 'jump.mp3';
+                jumpSound.load();
+            }
+            jumpSound.currentTime = 0;
+            jumpSound.play().catch(e => console.debug('Jump sound play failed:', e));
+        }
+    }
+    
+    update(deltaTime) {
+        if (!gameState.isRunning || gameState.isGameOver || gameState.isWin) return;
+        
+        // Apply gravity with frame rate independence
+        this.velocity += GRAVITY * (deltaTime / 16.67); // Normalize to 60fps
+        this.y += this.velocity * (deltaTime / 16.67);
+        
+        // Rotate chud based on velocity
+        this.rotation = Math.min(Math.PI/4, Math.max(-Math.PI/4, this.velocity * 0.05));
+        
+        // Check for collisions with ground and ceiling
+        const chudBottom = this.y + (CHUD_SIZE * scaleFactor) / 2;
+        const chudTop = this.y - (CHUD_SIZE * scaleFactor) / 2;
+        
+        if (chudBottom > canvas.height - (GROUND_HEIGHT * scaleFactor)) {
+            this.y = canvas.height - (GROUND_HEIGHT * scaleFactor) - (CHUD_SIZE * scaleFactor) / 2;
+            gameOver();
+        }
+        
+        if (chudTop < 0) {
+            this.y = (CHUD_SIZE * scaleFactor) / 2;
+            this.velocity = 0;
+        }
+    }
+    
+    draw() {
+        const scaledSize = CHUD_SIZE * scaleFactor;
+        
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.rotation);
+        
+        // Draw bird image with fallback
+        const birdImg = assets.images['bird-img'];
+        if (birdImg && birdImg.complete) {
+            ctx.drawImage(birdImg, -scaledSize/2, -scaledSize/2, scaledSize, scaledSize);
+        } else {
+            // Fallback to simple shape
+            ctx.fillStyle = '#f8e71c';
+            ctx.beginPath();
+            ctx.arc(0, 0, scaledSize/2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        ctx.restore();
+    }
+}
+</script>
+<script>
+// Optimized Pipe class with object pooling
+class Pipe {
+    constructor() {
+        this.reset();
+    }
+    
+    reset() {
+        this.x = canvas.width;
+        this.width = PIPE_WIDTH * scaleFactor;
+        // Ensure gap is always passable
+        const minGapPosition = 80 * scaleFactor;
+        const maxGapPosition = canvas.height - (GROUND_HEIGHT * scaleFactor) - (PIPE_GAP * scaleFactor) - 80;
+        this.gapPosition = Math.random() * (maxGapPosition - minGapPosition) + minGapPosition;
+        this.passed = false;
+        this.active = true;
+    }
+    
+    update(deltaTime) {
+        if (!gameState.isRunning || gameState.isGameOver || gameState.isWin || !this.active) return;
+        
+        // Frame rate independent movement
+        this.x -= PIPE_SPEED * (deltaTime / 16.67) * scaleFactor;
+        
+        // Check if off screen
+        if (this.x + this.width < 0) {
+            this.active = false;
+            return;
+        }
+        
+        // Check if chud passed the pipe
+        if (!this.passed && this.x + this.width < chud.x - (CHUD_SIZE * scaleFactor) / 2) {
+            this.passed = true;
+            gameState.score++;
+            updateScore();
+            
+            if (gameState.score >= WIN_SCORE) {
+                winGame();
+            }
+        }
+    }
+    
+    draw() {
+        if (!this.active) return;
+        
+        const pillarsImg = assets.images['pillars-img'];
+        const scaledGap = PIPE_GAP * scaleFactor;
+        const scaledGroundHeight = GROUND_HEIGHT * scaleFactor;
+        
+        if (pillarsImg && pillarsImg.complete) {
+            // Top pipe (extending downwards)
+            const topPipeHeight = this.gapPosition;
+            ctx.drawImage(pillarsImg, this.x, 0, this.width, topPipeHeight);
+            
+            // Bottom pipe (extending upwards) - flipped
+            const bottomPipeY = this.gapPosition + scaledGap;
+            const bottomPipeHeight = canvas.height - bottomPipeY - scaledGroundHeight;
+            
+            ctx.save();
+            ctx.translate(this.x + this.width/2, bottomPipeY + bottomPipeHeight/2);
+            ctx.scale(1, -1);
+            ctx.drawImage(pillarsImg, -this.width/2, -bottomPipeHeight/2, this.width, bottomPipeHeight);
+            ctx.restore();
+        } else {
+            // Fallback rectangles
+            ctx.fillStyle = '#73bf2e';
+            ctx.fillRect(this.x, 0, this.width, this.gapPosition);
+            ctx.fillRect(this.x, this.gapPosition + scaledGap, this.width, 
+                        canvas.height - this.gapPosition - scaledGap - scaledGroundHeight);
+        }
+    }
+    
+    collidesWith(chud) {
+        if (!this.active) return false;
+        
+        const chudSize = CHUD_SIZE * scaleFactor;
+        const chudLeft = chud.x - chudSize/2;
+        const chudRight = chud.x + chudSize/2;
+        const chudTop = chud.y - chudSize/2;
+        const chudBottom = chud.y + chudSize/2;
+        
+        const pipeRight = this.x + this.width;
+        
+        // Simple AABB collision detection
+        if (chudRight > this.x && chudLeft < pipeRight) {
+            if (chudTop < this.gapPosition || chudBottom > this.gapPosit
